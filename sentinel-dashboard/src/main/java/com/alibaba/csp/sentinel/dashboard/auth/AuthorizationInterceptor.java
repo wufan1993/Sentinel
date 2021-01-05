@@ -16,7 +16,10 @@
 package com.alibaba.csp.sentinel.dashboard.auth;
 
 import com.alibaba.csp.sentinel.dashboard.domain.Result;
+import com.alibaba.csp.sentinel.dashboard.util.JsonHelper;
 import com.alibaba.fastjson.JSON;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
@@ -26,6 +29,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.util.Map;
 
 /**
  * The web interceptor for privilege-based authorization.
@@ -36,12 +40,21 @@ import java.lang.reflect.Method;
 @Component
 public class AuthorizationInterceptor implements HandlerInterceptor {
 
+    private final Logger logger = LoggerFactory.getLogger(AuthorizationInterceptor.class);
+
     @Autowired
     private AuthService<HttpServletRequest> authService;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
             throws Exception {
+
+        //请求时间和请求参数
+        String url = request.getRequestURI();
+        //日志记录
+        Map<String, String[]> parameterMap = request.getParameterMap();
+        logger.debug("request start | url : [{}], params : [{}]", url, JsonHelper.toJson(parameterMap));
+
         if (handler.getClass().isAssignableFrom(HandlerMethod.class)) {
             Method method = ((HandlerMethod) handler).getMethod();
 

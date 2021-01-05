@@ -29,6 +29,7 @@ public class MachineInfo implements Comparable<MachineInfo> {
     private Integer port = -1;
     private long lastHeartbeat;
     private long heartbeatVersion;
+    private long mcVersion;
 
     /**
      * Indicates the version of Sentinel client (since 0.2.0).
@@ -93,6 +94,14 @@ public class MachineInfo implements Comparable<MachineInfo> {
     
     public void setHeartbeatVersion(long heartbeatVersion) {
         this.heartbeatVersion = heartbeatVersion;
+    }
+
+    public long getMcVersion() {
+        return mcVersion;
+    }
+
+    public void setMcVersion(long mcVersion) {
+        this.mcVersion = mcVersion;
     }
 
     public String getVersion() {

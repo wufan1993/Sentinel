@@ -41,7 +41,7 @@ public class MachineRegistryController {
 
     @ResponseBody
     @RequestMapping("/machine")
-    public Result<?> receiveHeartBeat(String app, @RequestParam(value = "app_type", required = false, defaultValue = "0") Integer appType, Long version, String v, String hostname, String ip, Integer port) {
+    public Result<?> receiveHeartBeat(String app, @RequestParam(value = "app_type", required = false, defaultValue = "0") Integer appType, Long version,Long mcVersion, String v, String hostname, String ip, Integer port) {
         if (app == null) {
             app = MachineDiscovery.UNKNOWN_APP_NAME;
         }
@@ -57,6 +57,7 @@ public class MachineRegistryController {
         }
         String sentinelVersion = StringUtil.isEmpty(v) ? "unknown" : v;
         version = version == null ? System.currentTimeMillis() : version;
+        mcVersion= mcVersion==null? System.currentTimeMillis() : mcVersion;
         try {
             MachineInfo machineInfo = new MachineInfo();
             machineInfo.setApp(app);
@@ -67,6 +68,7 @@ public class MachineRegistryController {
             machineInfo.setHeartbeatVersion(version);
             machineInfo.setLastHeartbeat(System.currentTimeMillis());
             machineInfo.setVersion(sentinelVersion);
+            machineInfo.setMcVersion(mcVersion);
             appManagement.addMachine(machineInfo);
             return Result.ofSuccessMsg("success");
         } catch (Exception e) {

@@ -15,9 +15,14 @@
  */
 package com.alibaba.csp.sentinel.dashboard.controller.cluster;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
+import com.alibaba.csp.sentinel.dashboard.domain.cluster.request.ClusterAppAssignMap;
+import com.alibaba.csp.sentinel.dashboard.h2.model.ConfigConstants;
+import com.alibaba.csp.sentinel.dashboard.h2.service.RuleConfigService;
 import com.alibaba.csp.sentinel.util.StringUtil;
 
 import com.alibaba.csp.sentinel.dashboard.domain.cluster.ClusterAppFullAssignRequest;
@@ -46,6 +51,9 @@ public class ClusterAssignController {
 
     @Autowired
     private ClusterAssignService clusterAssignService;
+
+    @Autowired
+    private RuleConfigService ruleConfigService;
 
     @PostMapping("/all_server/{app}")
     public Result<ClusterAppAssignResultVO> apiAssignAllClusterServersOfApp(@PathVariable String app,
@@ -77,8 +85,15 @@ public class ClusterAssignController {
             return Result.ofFail(-1, "bad request body");
         }
         try {
-            return Result.ofSuccess(clusterAssignService.applyAssignToApp(app, Collections.singletonList(assignRequest.getClusterMap()),
-                assignRequest.getRemainingList()));
+            List<ClusterAppAssignMap> clusterAppAssignMaps = Collections.singletonList(assignRequest.getClusterMap());
+
+            //保存规则
+            ruleConfigService.publishRules(ConfigConstants.flowRuleConfigKey,app,clusterAppAssignMaps);
+
+            ClusterAppAssignResultVO clusterAppAssignResultVO = clusterAssignService.applyAssignToApp(app, clusterAppAssignMaps,
+                    assignRequest.getRemainingList());
+
+            return Result.ofSuccess(clusterAppAssignResultVO);
         } catch (Throwable throwable) {
             logger.error("Error when assigning single cluster servers for app: " + app, throwable);
             return Result.ofFail(-1, throwable.getMessage());
@@ -95,7 +110,10 @@ public class ClusterAssignController {
             return Result.ofFail(-1, "bad request body");
         }
         try {
-            return Result.ofSuccess(clusterAssignService.unbindClusterServers(app, machineIds));
+            //保存一个空的规则
+            ruleConfigService.publishRules(ConfigConstants.flowRuleConfigKey,app,new ArrayList<>());
+            ClusterAppAssignResultVO clusterAppAssignResultVO = clusterAssignService.unbindClusterServers(app, machineIds);
+            return Result.ofSuccess(clusterAppAssignResultVO);
         } catch (Throwable throwable) {
             logger.error("Error when unbinding cluster server {} for app <{}>", machineIds, app, throwable);
             return Result.ofFail(-1, throwable.getMessage());

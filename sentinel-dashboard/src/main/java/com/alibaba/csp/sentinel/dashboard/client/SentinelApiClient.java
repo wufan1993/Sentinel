@@ -114,6 +114,8 @@ public class SentinelApiClient {
     private static final String MODIFY_CLUSTER_SERVER_TRANSPORT_CONFIG_PATH = "cluster/server/modifyTransportConfig";
     private static final String MODIFY_CLUSTER_SERVER_FLOW_CONFIG_PATH = "cluster/server/modifyFlowConfig";
     private static final String MODIFY_CLUSTER_SERVER_NAMESPACE_SET_PATH = "cluster/server/modifyNamespaceSet";
+    private static final String MODIFY_CLUSTER_SERVER_RULES_PATH = "cluster/server/modifyFlowRules";
+    private static final String GET_CLUSTER_SERVER_RULES_PATH = "cluster/server/flowRules";
 
     private static final String FETCH_GATEWAY_API_PATH = "gateway/getApiDefinitions";
     private static final String MODIFY_GATEWAY_API_PATH = "gateway/updateApiDefinitions";
@@ -122,6 +124,7 @@ public class SentinelApiClient {
     private static final String MODIFY_GATEWAY_FLOW_RULE_PATH = "gateway/updateRules";
 
     private static final String FLOW_RULE_TYPE = "flow";
+    private static final String FLOW_CLUSTER_RULE_TYPE = "flowCluster";
     private static final String DEGRADE_RULE_TYPE = "degrade";
     private static final String SYSTEM_RULE_TYPE = "system";
     private static final String AUTHORITY_TYPE = "authority";
@@ -380,9 +383,36 @@ public class SentinelApiClient {
             return null;
         }
     }
+
+    @Nullable
+    private <T> List<T> fetchClusterItems(String app,String ip, int port, String api, String type, Class<T> ruleType) {
+
+        AssertUtil.notEmpty(ip, "Bad machine IP");
+        AssertUtil.isTrue(port > 0, "Bad machine port");
+        Map<String, String> params = null;
+        if (StringUtil.isNotEmpty(type)) {
+            params = new HashMap<>(1);
+            params.put("type", type);
+            params.put("namespace", app);
+        }
+        CompletableFuture<List<T>> listCompletableFuture = executeCommand(ip, port, api, params, false)
+                .thenApply(json -> JSON.parseArray(json, ruleType));
+        try {
+            return listCompletableFuture.get();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
     
     private <T extends Rule> List<T> fetchRules(String ip, int port, String type, Class<T> ruleType) {
         return fetchItems(ip, port, GET_RULES_PATH, type, ruleType);
+    }
+
+    private <T extends Rule> List<T> fetchClusterRules(String app,String ip, int port, String type, Class<T> ruleType) {
+        return fetchClusterItems(app,ip, port, GET_CLUSTER_SERVER_RULES_PATH, type, ruleType);
     }
     
     private boolean setRules(String app, String ip, int port, String type, List<? extends RuleEntity> entities) {
@@ -437,6 +467,35 @@ public class SentinelApiClient {
         }
     }
 
+    private boolean setClusterFlowRules(String app, String ip, int port, String type, List<? extends RuleEntity> entities) {
+        if (entities == null) {
+            return true;
+        }
+        try {
+            AssertUtil.notEmpty(app, "Bad app name");
+            AssertUtil.notEmpty(ip, "Bad machine IP");
+            AssertUtil.isTrue(port > 0, "Bad machine port");
+            String data = JSON.toJSONString(
+                    entities.stream().map(r -> r.toRule()).collect(Collectors.toList()));
+            Map<String, String> params = new HashMap<>(2);
+            params.put("type", type);
+            params.put("data", data);
+            params.put("namespace",app);
+            String result = executeCommand(app, ip, port, MODIFY_CLUSTER_SERVER_RULES_PATH, params, true).get();
+            logger.info("setRules result: {}, type={}", result, type);
+            return true;
+        } catch (InterruptedException e) {
+            logger.warn("setRules API failed: {}", type, e);
+            return false;
+        } catch (ExecutionException e) {
+            logger.warn("setRules API failed: {}", type, e.getCause());
+            return false;
+        } catch (Exception e) {
+            logger.error("setRules API failed, type={}", type, e);
+            return false;
+        }
+    }
+
     public List<NodeVo> fetchResourceOfMachine(String ip, int port, String type) {
         return fetchItems(ip, port, RESOURCE_URL_PATH, type, NodeVo.class);
     }
@@ -462,6 +521,16 @@ public class SentinelApiClient {
         if (rules != null) {
             return rules.stream().map(rule -> FlowRuleEntity.fromFlowRule(app, ip, port, rule))
                 .collect(Collectors.toList());
+        } else {
+            return null;
+        }
+    }
+
+    public List<FlowRuleEntity> fetchClusterFlowRuleOfMachine(String app, String ip, int port) {
+        List<FlowRule> rules = fetchClusterRules(app,ip, port, FLOW_CLUSTER_RULE_TYPE, FlowRule.class);
+        if (rules != null) {
+            return rules.stream().map(rule -> FlowRuleEntity.fromFlowRule(app, ip, port, rule))
+                    .collect(Collectors.toList());
         } else {
             return null;
         }
@@ -546,6 +615,20 @@ public class SentinelApiClient {
      */
     public boolean setFlowRuleOfMachine(String app, String ip, int port, List<FlowRuleEntity> rules) {
         return setRules(app, ip, port, FLOW_RULE_TYPE, rules);
+    }
+
+    /**
+     * set Cluster rules of the machine. rules == null will return immediately;
+     * rules.isEmpty() means setting the rules to empty.
+     *
+     * @param app
+     * @param ip
+     * @param port
+     * @param rules
+     * @return whether successfully set the rules.
+     */
+    public boolean setClusterFlowRuleOfMachine(String app, String ip, int port, List<FlowRuleEntity> rules) {
+        return setClusterFlowRules(app, ip, port, FLOW_CLUSTER_RULE_TYPE, rules);
     }
 
     public CompletableFuture<Void> setFlowRuleOfMachineAsync(String app, String ip, int port, List<FlowRuleEntity> rules) {

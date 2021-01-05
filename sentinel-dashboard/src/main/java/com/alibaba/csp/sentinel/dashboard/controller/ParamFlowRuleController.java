@@ -28,6 +28,8 @@ import com.alibaba.csp.sentinel.dashboard.discovery.AppManagement;
 import com.alibaba.csp.sentinel.dashboard.discovery.MachineInfo;
 import com.alibaba.csp.sentinel.dashboard.auth.AuthService;
 import com.alibaba.csp.sentinel.dashboard.auth.AuthService.PrivilegeType;
+import com.alibaba.csp.sentinel.dashboard.h2.model.ConfigConstants;
+import com.alibaba.csp.sentinel.dashboard.h2.service.RuleConfigService;
 import com.alibaba.csp.sentinel.slots.block.RuleConstant;
 import com.alibaba.csp.sentinel.util.StringUtil;
 import com.alibaba.csp.sentinel.dashboard.datasource.entity.SentinelVersion;
@@ -65,6 +67,8 @@ public class ParamFlowRuleController {
     private AppManagement appManagement;
     @Autowired
     private RuleRepository<ParamFlowRuleEntity, Long> repository;
+    @Autowired
+    private RuleConfigService ruleConfigService;
 
     private boolean checkIfSupported(String app, String ip, int port) {
         try {
@@ -257,6 +261,7 @@ public class ParamFlowRuleController {
 
     private CompletableFuture<Void> publishRules(String app, String ip, Integer port) {
         List<ParamFlowRuleEntity> rules = repository.findAllByMachine(MachineInfo.of(app, ip, port));
+        ruleConfigService.publishRules(ConfigConstants.paramFlowRuleKey,app,rules);
         return sentinelApiClient.setParamFlowRuleOfMachine(app, ip, port, rules);
     }
 

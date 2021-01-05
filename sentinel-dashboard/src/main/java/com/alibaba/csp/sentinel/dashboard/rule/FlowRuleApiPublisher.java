@@ -26,6 +26,7 @@ import com.alibaba.csp.sentinel.util.StringUtil;
 import com.alibaba.csp.sentinel.dashboard.datasource.entity.rule.FlowRuleEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import java.util.stream.Collectors;
 
 /**
  * @author Eric Zhao
@@ -47,6 +48,8 @@ public class FlowRuleApiPublisher implements DynamicRulePublisher<List<FlowRuleE
         if (rules == null) {
             return;
         }
+
+        List<FlowRuleEntity> clusterRules = rules.stream().filter(FlowRuleEntity::isClusterMode).collect(Collectors.toList());
         Set<MachineInfo> set = appManagement.getDetailApp(app).getMachines();
 
         for (MachineInfo machine : set) {
@@ -55,6 +58,8 @@ public class FlowRuleApiPublisher implements DynamicRulePublisher<List<FlowRuleE
             }
             // TODO: parse the results
             sentinelApiClient.setFlowRuleOfMachine(app, machine.getIp(), machine.getPort(), rules);
+            //如果是集群模式 那么需要采用集群模式的api
+            sentinelApiClient.setClusterFlowRuleOfMachine(app, machine.getIp(), machine.getPort(), clusterRules);
         }
     }
 }

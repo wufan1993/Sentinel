@@ -20,6 +20,8 @@ import java.util.List;
 
 import com.alibaba.csp.sentinel.dashboard.auth.AuthAction;
 import com.alibaba.csp.sentinel.dashboard.auth.AuthService.PrivilegeType;
+import com.alibaba.csp.sentinel.dashboard.h2.model.ConfigConstants;
+import com.alibaba.csp.sentinel.dashboard.h2.service.RuleConfigService;
 import com.alibaba.csp.sentinel.dashboard.repository.rule.RuleRepository;
 import com.alibaba.csp.sentinel.util.StringUtil;
 
@@ -48,6 +50,8 @@ public class SystemController {
     private RuleRepository<SystemRuleEntity, Long> repository;
     @Autowired
     private SentinelApiClient sentinelApiClient;
+    @Autowired
+    private RuleConfigService ruleConfigService;
 
     private <R> Result<R> checkBasicParams(String app, String ip, Integer port) {
         if (StringUtil.isEmpty(app)) {
@@ -245,6 +249,7 @@ public class SystemController {
 
     private boolean publishRules(String app, String ip, Integer port) {
         List<SystemRuleEntity> rules = repository.findAllByMachine(MachineInfo.of(app, ip, port));
+        ruleConfigService.publishRules(ConfigConstants.systemRuleKey,app,rules);
         return sentinelApiClient.setSystemRuleOfMachine(app, ip, port, rules);
     }
 }

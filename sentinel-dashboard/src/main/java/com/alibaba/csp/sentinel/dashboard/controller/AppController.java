@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -27,6 +28,7 @@ import com.alibaba.csp.sentinel.dashboard.discovery.AppManagement;
 import com.alibaba.csp.sentinel.dashboard.discovery.MachineInfo;
 import com.alibaba.csp.sentinel.dashboard.domain.Result;
 import com.alibaba.csp.sentinel.dashboard.domain.vo.MachineInfoVo;
+import com.alibaba.csp.sentinel.dashboard.h2.service.UserInfoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -44,6 +46,9 @@ public class AppController {
     @Autowired
     private AppManagement appManagement;
 
+    @Autowired
+    private UserInfoService userInfoService;
+
     @GetMapping("/names.json")
     public Result<List<String>> queryApps(HttpServletRequest request) {
         return Result.ofSuccess(appManagement.getAppNames());
@@ -53,6 +58,11 @@ public class AppController {
     public Result<List<AppInfo>> queryAppInfos(HttpServletRequest request) {
         List<AppInfo> list = new ArrayList<>(appManagement.getBriefApps());
         Collections.sort(list, Comparator.comparing(AppInfo::getApp));
+
+        //获取应用列表
+        List<String> appList=userInfoService.findUserApp();
+        list=list.stream().filter(appInfo -> appList.contains(appInfo.getApp())).collect(Collectors.toList());
+
         return Result.ofSuccess(list);
     }
 

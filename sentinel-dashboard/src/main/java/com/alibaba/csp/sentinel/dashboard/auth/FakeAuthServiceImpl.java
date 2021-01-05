@@ -16,8 +16,15 @@
 package com.alibaba.csp.sentinel.dashboard.auth;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 
+import com.alibaba.csp.sentinel.dashboard.h2.domain.UserInfo;
+import org.apache.commons.lang.StringUtils;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+import java.util.Objects;
 
 /**
  * A fake AuthService implementation, which will pass all user auth checking.
@@ -28,38 +35,61 @@ import org.springframework.stereotype.Component;
 @Component
 public class FakeAuthServiceImpl implements AuthService<HttpServletRequest> {
 
+
     @Override
     public AuthUser getAuthUser(HttpServletRequest request) {
-        return new AuthUserImpl();
+        //注意 如果是多个机器搭建 请从缓存中去取
+        if(request==null){
+            request = ((ServletRequestAttributes) Objects.requireNonNull(RequestContextHolder.getRequestAttributes())).getRequest();
+        }
+        HttpSession session = request.getSession();
+        Object sentinelUserObj = session.getAttribute(SimpleWebAuthServiceImpl.WEB_SESSION_KEY);
+        if (sentinelUserObj != null && sentinelUserObj instanceof AuthUser) {
+            return (AuthUser) sentinelUserObj;
+        }
+
+        return null;
     }
 
-    static final class AuthUserImpl implements AuthUser {
+    public static final class AuthUserImpl implements AuthUser {
+
+        private UserInfo userInfo;
+
+        public AuthUserImpl(UserInfo userInfo) {
+            this.userInfo = userInfo;
+        }
 
         @Override
         public boolean authTarget(String target, PrivilegeType privilegeType) {
-            // fake implementation, always return true
-            return true;
+            String privilegeTypes = userInfo.getPrivilegeType();
+            if(StringUtils.isBlank(privilegeTypes) || privilegeTypes.contains(PrivilegeType.ALL.name())){
+                return true;
+            }
+            if(privilegeTypes.contains(privilegeType.name())){
+                return true;
+            }
+            return false;
         }
 
         @Override
         public boolean isSuperUser() {
-            // fake implementation, always return true
             return true;
         }
 
         @Override
         public String getNickName() {
-            return "FAKE_NICK_NAME";
+            return userInfo.getUsername();
         }
 
         @Override
         public String getLoginName() {
-            return "FAKE_LOGIN_NAME";
+            return userInfo.getUsername();
         }
 
         @Override
         public String getId() {
-            return "FAKE_EMP_ID";
+            return userInfo.getUsername();
         }
     }
+
 }

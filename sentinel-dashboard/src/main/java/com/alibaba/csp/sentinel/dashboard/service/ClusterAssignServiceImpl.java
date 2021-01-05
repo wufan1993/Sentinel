@@ -27,6 +27,9 @@ import java.util.stream.Collectors;
 
 import com.alibaba.csp.sentinel.cluster.ClusterStateManager;
 import com.alibaba.csp.sentinel.dashboard.domain.cluster.state.ClusterUniversalStatePairVO;
+import com.alibaba.csp.sentinel.dashboard.h2.model.ConfigConstants;
+import com.alibaba.csp.sentinel.dashboard.h2.service.RuleConfigService;
+import com.alibaba.csp.sentinel.dashboard.util.JsonHelper;
 import com.alibaba.csp.sentinel.util.AssertUtil;
 import com.alibaba.csp.sentinel.util.function.Tuple2;
 
@@ -42,6 +45,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.alibaba.csp.sentinel.dashboard.datasource.entity.rule.FlowRuleEntity;
 
 /**
  * @author Eric Zhao
@@ -56,6 +60,9 @@ public class ClusterAssignServiceImpl implements ClusterAssignService {
     private SentinelApiClient sentinelApiClient;
     @Autowired
     private ClusterConfigService clusterConfigService;
+
+    @Autowired
+    private RuleConfigService ruleConfigService;
 
     private boolean isMachineInApp(/*@NonEmpty*/ String machineId) {
         return machineId.contains(":");
@@ -168,6 +175,15 @@ public class ClusterAssignServiceImpl implements ClusterAssignService {
 
         // Unbind remaining (unassigned) machines.
         applyAllRemainingMachineSet(app, remainingSet, failedClientSet);
+        //把集群流控规则发送到服务端
+        clusterMap.stream().filter(Objects::nonNull)
+                .filter(ClusterAppAssignMap::getBelongToApp).forEach(cluster -> {
+            String flowRuleValue = ruleConfigService.getRulesByKey(app + "_" + ConfigConstants.flowRuleKey);
+            List<FlowRuleEntity> lowRuleList = JsonHelper.fromJsonArray(flowRuleValue, FlowRuleEntity.class);
+            List<FlowRuleEntity> clusterRules = lowRuleList.stream().filter(FlowRuleEntity::isClusterMode).collect(Collectors.toList());
+            sentinelApiClient.setClusterFlowRuleOfMachine(app, cluster.getIp(), parsePort(cluster), clusterRules);
+            LOGGER.info("完成服务机器集群流控规则刷新" + JsonHelper.toJson(clusterRules));
+        });
 
         return new ClusterAppAssignResultVO()
             .setFailedClientSet(failedClientSet)

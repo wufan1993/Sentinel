@@ -22,7 +22,9 @@ import com.alibaba.csp.sentinel.dashboard.auth.AuthAction;
 import com.alibaba.csp.sentinel.dashboard.client.SentinelApiClient;
 import com.alibaba.csp.sentinel.dashboard.discovery.MachineInfo;
 import com.alibaba.csp.sentinel.dashboard.auth.AuthService.PrivilegeType;
+import com.alibaba.csp.sentinel.dashboard.h2.service.RuleConfigService;
 import com.alibaba.csp.sentinel.dashboard.repository.rule.RuleRepository;
+import com.alibaba.csp.sentinel.dashboard.h2.model.ConfigConstants;
 import com.alibaba.csp.sentinel.slots.block.RuleConstant;
 import com.alibaba.csp.sentinel.slots.block.degrade.circuitbreaker.CircuitBreakerStrategy;
 import com.alibaba.csp.sentinel.util.StringUtil;
@@ -58,6 +60,9 @@ public class DegradeController {
     private RuleRepository<DegradeRuleEntity, Long> repository;
     @Autowired
     private SentinelApiClient sentinelApiClient;
+
+    @Autowired
+    private RuleConfigService ruleConfigService;
 
     @GetMapping("/rules.json")
     @AuthAction(PrivilegeType.READ_RULE)
@@ -163,6 +168,10 @@ public class DegradeController {
 
     private boolean publishRules(String app, String ip, Integer port) {
         List<DegradeRuleEntity> rules = repository.findAllByMachine(MachineInfo.of(app, ip, port));
+
+        //把数据写入到存储中
+        ruleConfigService.publishRules(ConfigConstants.degradeRuleKey,app,rules);
+        //把数据发送到 机器中
         return sentinelApiClient.setDegradeRuleOfMachine(app, ip, port, rules);
     }
 

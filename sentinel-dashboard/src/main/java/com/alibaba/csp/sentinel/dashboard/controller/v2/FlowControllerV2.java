@@ -21,6 +21,8 @@ import java.util.List;
 import com.alibaba.csp.sentinel.dashboard.auth.AuthAction;
 import com.alibaba.csp.sentinel.dashboard.auth.AuthService;
 import com.alibaba.csp.sentinel.dashboard.auth.AuthService.PrivilegeType;
+import com.alibaba.csp.sentinel.dashboard.h2.model.ConfigConstants;
+import com.alibaba.csp.sentinel.dashboard.h2.service.RuleConfigService;
 import com.alibaba.csp.sentinel.util.StringUtil;
 
 import com.alibaba.csp.sentinel.dashboard.datasource.entity.rule.FlowRuleEntity;
@@ -64,6 +66,10 @@ public class FlowControllerV2 {
     @Autowired
     @Qualifier("flowRuleDefaultPublisher")
     private DynamicRulePublisher<List<FlowRuleEntity>> rulePublisher;
+
+
+    @Autowired
+    private RuleConfigService ruleConfigService;
 
     @GetMapping("/rules")
     @AuthAction(PrivilegeType.READ_RULE)
@@ -221,6 +227,7 @@ public class FlowControllerV2 {
 
     private void publishRules(/*@NonNull*/ String app) throws Exception {
         List<FlowRuleEntity> rules = repository.findAllByApp(app);
+        ruleConfigService.publishRules(ConfigConstants.flowRuleKey,app,rules);
         rulePublisher.publish(app, rules);
     }
 }
