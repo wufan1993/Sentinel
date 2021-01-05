@@ -1,179 +1,76 @@
-<img src="https://user-images.githubusercontent.com/9434884/43697219-3cb4ef3a-9975-11e8-9a9c-73f4f537442d.png" alt="Sentinel Logo" width="50%">
+# Sentinel: 基于release1.8版本 完成了以sentinel-dashboard为核心的规则推送API模式的设计开发
 
-# Sentinel: The Sentinel of Your Microservices
+## 技术方案
+### 1. 增加技术
+- **mybatis-plus**
+- **h2数据库持久化方案(可以随便替换其它数据源，只需要改下配置文件jdbc数据源)**
+### 2. 核心思想
+- **以h2数据库持久化方案做各种规则信息的记录**
+- **以API获取规则模式展示控制台具体的规则数据,实时获取服务机器规则**
+- **自定义应用服务器的启动状态，来维护服务器sentinel状态，和控制台的数据库做交互同步**
+### 3. 资源整合
+- **整合了API中HTTP数据交互和集群流控的jar包，并封装在了统一的sentinel-extension-resource模块下**
+- **[注意]：我添加了服务器重启的状态标记，所以一定要使用这个模块，才能完成服务器和控制台规则同步**
+## 增加功能
+### 1. 主要功能
+- **流控规则数据持久化**
+- **降级规则数据持久化**
+- **热点规则数据持久化**
+- **系统规则数据持久化**
+- **授权规则数据持久化**
+### 2. 增强功能
+- **账户登陆信息支持**
+- **账户应用权限信息支持**
+- **账户应用操作读、写、删权限支持**
+- **控制台重启获取数据库规则数据并同步到各个应用服务器**
+- **服务器重启去请求客户端获取数据库规则并执行服务器规则刷新命令**
+- **定时任务去监控服务器资源状态，打印报警日志。使用者可以自己根据规则发送邮件或者短信报警**
 
-[![Travis Build Status](https://travis-ci.org/alibaba/Sentinel.svg?branch=master)](https://travis-ci.org/alibaba/Sentinel)
-[![Codecov](https://codecov.io/gh/alibaba/Sentinel/branch/master/graph/badge.svg)](https://codecov.io/gh/alibaba/Sentinel)
-[![Maven Central](https://img.shields.io/maven-central/v/com.alibaba.csp/sentinel-core.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:com.alibaba.csp%20AND%20a:sentinel-core)
-[![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
-[![Gitter](https://badges.gitter.im/alibaba/Sentinel.svg)](https://gitter.im/alibaba/Sentinel)
+## 接入方式
+### 1. 构建包和依赖环境
+mvn clean -U install -Dmaven.test.skip=true
+在各个模块编译路径下分别获取到 
+- **1、sentinel-extension-resource-1.8.0.jar**
+- **2、sentinel-dashboard.jar**
 
-## Introduction
+### 2. 启动sentinel-dashboard控制台
+- **java -Dserver.port=8080 -Dcsp.sentinel.dashboard.server=localhost:8080 -Dproject.name=sentinel-dashboard -jar sentinel-dashboard.jar**
+- **注意，首次启动需要加载创建数据表结构，以后启动就不需要了，h2会把数据库持久化到文件中，这样重启服务就能加载到数据，否则每次启动控制台更新表结构就没有数据了**
+- **操作的文件是application-[env].properties**
+### 3. 启动服务应用客户端
 
-As distributed systems become increasingly popular, the reliability between services is becoming more important than ever before.
-Sentinel takes "flow" as breakthrough point, and works on multiple fields including **flow control**,
-**traffic shaping**, **circuit breaking** and **system adaptive protection**, to guarantee reliability and resilience for microservices.
-
-Sentinel has the following features:
-
-- **Rich applicable scenarios**: Sentinel has been wildly used in Alibaba, and has covered almost all the core-scenarios in Double-11 (11.11) Shopping Festivals in the past 10 years, such as “Second Kill” which needs to limit burst flow traffic to meet the system capacity, message peak clipping and valley fills, circuit breaking for unreliable downstream services, cluster flow control, etc.
-- **Real-time monitoring**: Sentinel also provides real-time monitoring ability. You can see the runtime information of a single machine in real-time, and the aggregated runtime info of a cluster with less than 500 nodes.
-- **Widespread open-source ecosystem**: Sentinel provides out-of-box integrations with commonly-used frameworks and libraries such as Spring Cloud, Dubbo and gRPC. You can easily use Sentinel by simply add the adapter dependency to your services.
-- **Polyglot support**: Sentinel has provided native support for Java, [Go](https://github.com/alibaba/sentinel-golang) and [C++](https://github.com/alibaba/sentinel-cpp).
-- **Various SPI extensions**: Sentinel provides easy-to-use SPI extension interfaces that allow you to quickly customize your logic, for example, custom rule management, adapting data sources, and so on.
-
-Features overview:
-
-![features-of-sentinel](./doc/image/sentinel-features-overview-en.png)
-
-## Documentation
-
-See the [中文文档](https://github.com/alibaba/Sentinel/wiki/%E4%BB%8B%E7%BB%8D) for document in Chinese.
-
-See the [Wiki](https://github.com/alibaba/Sentinel/wiki) for full documentation, examples, blog posts, operational details and other information.
-
-Sentinel provides integration modules for various open-source frameworks
-(e.g. Spring Cloud, Apache Dubbo, gRPC, Spring WebFlux, Reactor) and service mesh.
-You can refer to [the document](https://github.com/alibaba/Sentinel/wiki/Adapters-to-Popular-Framework) for more information.
-
-If you are using Sentinel, please [**leave a comment here**](https://github.com/alibaba/Sentinel/issues/18) to tell us your scenario to make Sentinel better.
-It's also encouraged to add the link of your blog post, tutorial, demo or customized components to [**Awesome Sentinel**](./doc/awesome-sentinel.md).
-
-## Ecosystem Landscape
-
-![ecosystem-landscape](./doc/image/sentinel-opensource-eco-landscape-en.png)
-
-## Quick Start
-
-Below is a simple demo that guides new users to use Sentinel in just 3 steps. It also shows how to monitor this demo using the dashboard.
-
-### 1. Add Dependency
-
-**Note:** Sentinel Core requires Java 7 or later.
-
-If your're using Maven, just add the following dependency in `pom.xml`.
-
+在服务应用项目中引入pom jar包
 ```xml
-<!-- replace here with the latest version -->
+<!-- 在自己的应用环境中引入sentinel-extension-resource-1.8.0.jar包(如果有maven私服可以上传，没有可以采用import方式导入到工程中) -->
 <dependency>
     <groupId>com.alibaba.csp</groupId>
-    <artifactId>sentinel-core</artifactId>
+    <artifactId>sentinel-extension-resource</artifactId>
     <version>1.8.0</version>
 </dependency>
 ```
 
-If not, you can download JAR in [Maven Center Repository](https://mvnrepository.com/artifact/com.alibaba.csp/sentinel-core).
-
-### 2. Define Resource
-
-Wrap your code snippet via Sentinel API: `SphU.entry(resourceName)`.
-In below example, it is `System.out.println("hello world");`:
-
-```java
-try (Entry entry = SphU.entry("HelloWorld")) {
-    // Your business logic here.
-    System.out.println("hello world");
-} catch (BlockException e) {
-    // Handle rejected request.
-    e.printStackTrace();
-}
-// try-with-resources auto exit
+xml文件配置方式注入系统参数bean+切面bean(用注解的可以自己去写，只要注入bean就行)
+```xml
+<!-- 可选注入bean，没有填写就需要在jvm参数上加上自己的机器名称和客户端的服务地址-->
+<bean id="sentinelResourceRegister" class="com.alibaba.csp.sentinel.extension.resource.SentinelResourceRegister" >
+ <property name="sentinelServer" value="${sentinel.dashboard.server}"></property>
+ <property name="projectName" value="${sentinel.project.name}"></property>
+</bean>
+```
+```xml
+<!-- 使用注解切面的方式去控制资源进行流控降级操作 -->
+<bean class="com.alibaba.csp.sentinel.annotation.aspectj.SentinelResourceAspect"></bean>
 ```
 
-So far the code modification is done. We've also provided [annotation support module](https://github.com/alibaba/Sentinel/blob/master/sentinel-extension/sentinel-annotation-aspectj/README.md) to define resource easier.
+## 使用方式
+### 1. 登陆数据库
+- **登陆 http://localhost:8080/h2**
+- **填写JDBC URL、User Name、Password 具体参数需要自己在配置文件application.properties中定义**
 
-### 3. Define Rules
-
-If we want to limit the access times of the resource, we can **set rules to the resource**.
-The following code defines a rule that limits access to the resource to 20 times per second at the maximum.
-
-```java
-List<FlowRule> rules = new ArrayList<>();
-FlowRule rule = new FlowRule();
-rule.setResource("HelloWorld");
-// set limit qps to 20
-rule.setCount(20);
-rule.setGrade(RuleConstant.FLOW_GRADE_QPS);
-rules.add(rule);
-FlowRuleManager.loadRules(rules);
-```
-
-For more information, please refer to [How To Use](https://github.com/alibaba/Sentinel/wiki/How-to-Use).
-
-### 4. Check the Result
-
-After running the demo for a while, you can see the following records in `~/logs/csp/${appName}-metrics.log.{date}` (When using the default `DateFileLogHandler`).
-
-```
-|--timestamp-|------date time----|-resource-|p |block|s |e|rt  |occupied
-1529998904000|2018-06-26 15:41:44|HelloWorld|20|0    |20|0|0   |0
-1529998905000|2018-06-26 15:41:45|HelloWorld|20|5579 |20|0|728 |0
-1529998906000|2018-06-26 15:41:46|HelloWorld|20|15698|20|0|0   |0
-1529998907000|2018-06-26 15:41:47|HelloWorld|20|19262|20|0|0   |0
-1529998908000|2018-06-26 15:41:48|HelloWorld|20|19502|20|0|0   |0
-1529998909000|2018-06-26 15:41:49|HelloWorld|20|18386|20|0|0   |0
-
-p stands for incoming request, block for blocked by rules, success for success handled by Sentinel, e for exception count, rt for average response time (ms), occupied stands for occupiedPassQps since 1.5.0 which enable us booking more than 1 shot when entering.
-```
-
-This shows that the demo can print "hello world" 20 times per second.
-
-More examples and information can be found in the [How To Use](https://github.com/alibaba/Sentinel/wiki/How-to-Use) section.
-
-The working principles of Sentinel can be found in [How it works](https://github.com/alibaba/Sentinel/wiki/How-it-works) section.
-
-Samples can be found in the [sentinel-demo](https://github.com/alibaba/Sentinel/tree/master/sentinel-demo) module.
-
-### 5. Start Dashboard
-
-> Note: Java 8 is required for building or running the dashboard.
-
-Sentinel also provides a simple dashboard application, on which you can monitor the clients and configure the rules in real time.
-
-![dashboard](https://user-images.githubusercontent.com/9434884/55449295-84866d80-55fd-11e9-94e5-d3441f4a2b63.png)
-
-For details please refer to [Dashboard](https://github.com/alibaba/Sentinel/wiki/Dashboard).
-
-## Trouble Shooting and Logs
-
-Sentinel will generate logs for troubleshooting and real-time monitoring.
-All the information can be found in [logs](https://github.com/alibaba/Sentinel/wiki/Logs).
-
-## Bugs and Feedback
-
-For bug report, questions and discussions please submit [GitHub Issues](https://github.com/alibaba/sentinel/issues).
-
-Contact us via [Gitter](https://gitter.im/alibaba/Sentinel) or [Email](mailto:sentinel@linux.alibaba.com).
-
-## Contributing
-
-Contributions are always welcomed! Please refer to [CONTRIBUTING](./CONTRIBUTING.md) for detailed guidelines.
-
-You can start with the issues labeled with [`good first issue`](https://github.com/alibaba/Sentinel/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
-
-## Credits
-
-Thanks [Guava](https://github.com/google/guava), which provides some inspiration on rate limiting.
-
-And thanks for all [contributors](https://github.com/alibaba/Sentinel/graphs/contributors) of Sentinel!
-
-## Who is using
-
-These are only part of the companies using Sentinel, for reference only.
-If you are using Sentinel, please [add your company here](https://github.com/alibaba/Sentinel/issues/18) to tell us your scenario to make Sentinel better :)
-
-![Alibaba Group](https://docs.alibabagroup.com/assets2/images/en/global/logo_header.png)
-![AntFin](https://user-images.githubusercontent.com/9434884/90598732-30961c00-e226-11ea-8c86-0b1d7f7875c7.png)
-![Taiping Renshou](http://www.cntaiping.com/tplresource/cms/www/taiping/img/home_new/tp_logo_img.png)
-![拼多多](http://cdn.pinduoduo.com/assets/img/pdd_logo_v3.png)
-![爱奇艺](https://user-images.githubusercontent.com/9434884/90598445-a51c8b00-e225-11ea-9327-3543525f3f2a.png)
-![Shunfeng Technology](https://user-images.githubusercontent.com/9434884/48463502-2f48eb80-e817-11e8-984f-2f9b1b789e2d.png)
-![二维火](https://user-images.githubusercontent.com/9434884/49358468-bc43de00-f70d-11e8-97fe-0bf05865f29f.png)
-![Mandao](https://user-images.githubusercontent.com/9434884/48463559-6cad7900-e817-11e8-87e4-42952b074837.png)
-![文轩在线](http://static.winxuancdn.com/css/v2/images/logo.png)
-![客如云](https://www.keruyun.com/static/krynew/images/logo.png)
-![亲宝宝](https://stlib.qbb6.com/wclt/img/home_hd/version1/title_logo.png)
-![杭州光云科技](https://www.raycloud.com/images/logo.png)
-![金汇金融](https://res.jinhui365.com/r/images/logo2.png?v=1.527)
-![闪电购](http://cdn.52shangou.com/shandianbang/official-source/3.1.1/build/images/logo.png)
-
+### 1. 配置启动账户和操作权限
+- **直接在h2数据库控制到添加启动账户和操作权限（具体怎么添加数据可以自己摸索）**
+- **案例:ID	username	password	phone	可以填写权限(ALL,WRITE_RULE,READ_RULE,DELETE_RULE,READ_METRIC,ADD_MACHINE)**
+- **权限就是字符串加上逗号分割，如果全都有填写[ALL],如果只有读和删，那么填写[READ_RULE,DELETE_RULE]**
+### 2. 配置账户应用权限
+- **案例:ID	username	app_name**
+- **app_name是服务器在控制台注册的应用名称，配置好映射关系后，这样这个用户就可以访问这些应用了**
