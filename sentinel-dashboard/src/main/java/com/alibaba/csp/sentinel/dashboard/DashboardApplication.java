@@ -19,13 +19,16 @@ import com.alibaba.csp.sentinel.init.InitExecutor;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Sentinel dashboard application.
  *
  * @author Carpenter Lee
  */
+@EnableScheduling
 @SpringBootApplication
+//@ImportResource(locations = {"classpath:spring-mvc.xml"})
 public class DashboardApplication {
 
     public static void main(String[] args) {
