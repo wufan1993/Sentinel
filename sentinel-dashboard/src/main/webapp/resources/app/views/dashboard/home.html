@@ -1,13 +1,22 @@
 <div>
-  <div class="row">
-    <div class="col-lg-12">
-      <h1 class="page-header">欢迎使用 Sentinel 控制台</h1>
+    <div class="row">
+        <div class="col-lg-12">
+            <h1 class="page-header">欢迎使用 Sentinel 控制台</h1>
+        </div>
+        <!-- /.col-lg-12 -->
     </div>
-    <!-- /.col-lg-12 -->
-  </div>
-  <!-- /.row -->
-  <!-- /.panel -->
-  <div class="row">
-  </div>
-  <!-- /.row -->
+    <!-- /.row -->
+    <!-- /.panel -->
+    <div class="row">
+        <h3> 1、完成集群流控模式开发，用户、角色、权限二次开发</h3>
+        <h4>    </h4>
+
+        <h3> 2、支持各种规则的数据存储，底层采用h2数据库实现，直接部署并使用，可以灵活切换JDBC数据源</h3>
+
+        <h3> 3、使用集群流控功能，必须要配置 集群流控的规则 设置token Server 和 client Server 选择应用内机器即可</h3>
+
+        <h4>（注意：选择应用内的机器作为token Server时，为了防止影响到应用本身，请合理配置最大允许QPS，
+            一般选择空闲大的机器作为server，如果流量很大，可以单独部署无流量的机器作为token Server）</h4>
+    </div>
+    <!-- /.row -->
 </div>
